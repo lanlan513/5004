@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import './styles.css'
+import TypeObserver from './type-observer/TypeObserver.jsx'
 
 const colorSets = [
   { bg:'#d9ff3f', ink:'#151515', accent:'#ff5938' },
@@ -16,7 +17,7 @@ function useRoute() {
 }
 
 function Header({go, route}) {
-  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/works','作品墙']]
+  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/type-observer','文字观察器'],['/works','作品墙']]
   return <header className="header"><button className="brand" onClick={()=>go('/')}>STUDIO <span>14</span></button><nav>{links.map(([href,label])=><button key={href} className={route===href?'active':''} onClick={()=>go(href)}>{label}</button>)}</nav><div className="header-right"><span className="status-dot"/>实验室在线 <span className="menu">↗</span></div></header>
 }
 
@@ -38,6 +39,14 @@ function Home({go}) {
     </section>
     <section className="intro-strip"><div className="index-mark">/ 01</div><div><h2>设计不是装饰，<br/><em>是一次选择。</em></h2><p>我们把复杂的设计知识拆成可以观察、可以操作的瞬间。每次练习只解决一个问题，让你的眼睛先学会思考。</p></div><button className="circle-button" onClick={()=>go('/practice')}>进入练习场 <Arrow/></button></section>
     <section className="portal-section"><div className="section-head"><div><p className="eyebrow">THE LAB / 四个入口</p><h2>从一个好奇心<br/>开始。</h2></div><span className="mono">拖动 / 点击 / 观察</span></div><div className="portal-grid"><Portal n="01" title="学习路径" desc="从构图到视觉层级，建立你的第一套设计语言。" tone="lime" onClick={()=>go('/learn')}/><Portal n="02" title="案例档案" desc="拆开那些让人过目不忘的海报、系统与字体。" tone="orange" onClick={()=>go('/cases')}/><Portal n="03" title="练习场" desc="30 秒一个小挑战，把概念变成肌肉记忆。" tone="purple" onClick={()=>go('/practice')}/><Portal n="04" title="作品墙" desc="保存你的实验，看看灵感如何彼此碰撞。" tone="blue" onClick={()=>go('/works')}/></div></section>
+    <section className="type-entry">
+      <div className="type-entry-left">
+        <p className="eyebrow">TOOL / 文字观察器</p>
+        <h2>输入一句话，<em>听见字体的声音。</em></h2>
+        <p>在标题、正文、注释三个层级里同时试验字体、字号、字重、行距与字距；内置六组风格迥异的字体组合与真实设计场景，调完即可保存为自己的排版方案。字体异步加载并自动回退，任何网络环境下文字都不会空白。</p>
+      </div>
+      <button className="circle-button" onClick={()=>go('/type-observer')}>进入观察器 <Arrow/></button>
+    </section>
     <section className="quote-band"><span className="quote-mark">“</span><p>留白不是空白，<br/><strong>是给想法呼吸的地方。</strong></p><span className="mono">— STUDIO 14 NOTE 0001</span></section>
   </main>
 }
@@ -75,6 +84,6 @@ function Works({go}) {
 
 function NotFound({go}) { return <main className="not-found"><Pill>404 / LOST GRID</Pill><h1>这块画布<br/>还没有内容。</h1><button className="outline-button" onClick={()=>go('/')}>返回实验室 <Arrow/></button></main> }
 
-function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
+function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/type-observer':<TypeObserver go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
 
 export default App
