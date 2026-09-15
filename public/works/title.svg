@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250">
+  <rect width="1000" height="1250" fill="#fff8ef"/>
+  <text x="56" y="80" font-family="DM Mono, monospace" font-size="24" letter-spacing="5" fill="#171717">STUDIO 14 · TYPOGRAFIE 02</text>
+  <text x="944" y="80" text-anchor="end" font-family="DM Mono, monospace" font-size="24" fill="#171717">N°02</text>
+  <line x1="56" y1="112" x2="944" y2="112" stroke="#171717" stroke-width="2"/>
+  <text x="50" y="300" font-size="250" font-weight="900" letter-spacing="4" fill="#171717" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">第一眼</text>
+  <rect x="56" y="352" width="888" height="18" fill="#ff5938"/>
+  <text x="56" y="430" font-family="DM Mono, monospace" font-size="38" letter-spacing="10" fill="#171717">THE FIRST GLANCE TEST</text>
+  <g font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="20" fill="#6b6861">
+    <text x="56" y="640">视觉层级从一个决定开始：</text>
+    <text x="56" y="676">什么先被看见，什么退后一步。</text>
+    <text x="56" y="712">字号、字重与留白共同投票，</text>
+    <text x="56" y="748">而标题，永远是得票最多的那一个。</text>
+  </g>
+  <g font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="20" fill="#6b6861">
+    <text x="396" y="640">把标题当成画面，</text>
+    <text x="396" y="676">而不只是信息。</text>
+    <text x="396" y="712">它占据的面积，</text>
+    <text x="396" y="748">就是它要求的注意力。</text>
+  </g>
+  <g font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="20" fill="#6b6861" text-anchor="end">
+    <text x="944" y="640">读者只会给你</text>
+    <text x="944" y="676">不到一秒钟。</text>
+    <text x="944" y="712">让最重要的词，</text>
+    <text x="944" y="748">大到无法错过。</text>
+  </g>
+  <circle cx="800" cy="1010" r="150" fill="none" stroke="#d9d5cc" stroke-width="3"/>
+  <text x="800" y="1030" text-anchor="middle" font-family="DM Mono, monospace" font-size="150" font-weight="500" fill="#e6e2d8">02</text>
+  <text x="56" y="1196" font-family="DM Mono, monospace" font-size="22" letter-spacing="4" fill="#171717">HIERARCHIE · 标题即画面</text>
+</svg>

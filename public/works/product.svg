@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250">
+  <rect width="1000" height="1250" fill="#7546e8"/>
+  <text x="56" y="80" font-family="DM Mono, monospace" font-size="24" letter-spacing="5" fill="#fff8ef">EAU DE STUDIO 14</text>
+  <text x="944" y="80" text-anchor="end" font-family="DM Mono, monospace" font-size="24" fill="#d9ff3f">N°14</text>
+  <line x1="56" y1="112" x2="944" y2="112" stroke="#fff8ef" stroke-width="2" opacity="0.7"/>
+  <circle cx="500" cy="636" r="300" fill="#d9ff3f"/>
+  <ellipse cx="500" cy="908" rx="220" ry="26" fill="#171717" opacity="0.18"/>
+  <rect x="442" y="318" width="116" height="64" rx="8" fill="#171717"/>
+  <rect x="462" y="382" width="76" height="56" fill="#171717"/>
+  <rect x="372" y="438" width="256" height="448" rx="46" fill="#fff8ef"/>
+  <rect x="396" y="478" width="32" height="360" rx="16" fill="#ffffff" opacity="0.75"/>
+  <rect x="412" y="556" width="176" height="214" fill="#171717"/>
+  <text x="500" y="616" text-anchor="middle" font-family="DM Mono, monospace" font-size="26" letter-spacing="6" fill="#d9ff3f">EAU DE</text>
+  <text x="500" y="742" text-anchor="middle" font-family="DM Mono, monospace" font-size="120" font-weight="500" fill="#d9ff3f">14</text>
+  <text x="500" y="1010" text-anchor="middle" font-size="72" font-weight="900" letter-spacing="10" fill="#fff8ef" font-family="'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif">十四号水</text>
+  <text x="500" y="1066" text-anchor="middle" font-family="DM Mono, monospace" font-size="24" letter-spacing="8" fill="#efe9dd" opacity="0.85">EAU DE PARFUM · 50 ML</text>
+  <g font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="18" fill="#efe9dd" opacity="0.8">
+    <text x="56" y="1170">前调 · 佛手柑</text>
+    <text x="500" y="1170" text-anchor="middle">中调 · 鸢尾</text>
+    <text x="944" y="1170" text-anchor="end">后调 · 雪松</text>
+  </g>
+</svg>

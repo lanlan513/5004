@@ -9,6 +9,8 @@ const root = path.join(__dirname, '..')
 const dbPath = path.join(__dirname, 'lab.sqlite')
 const db = new DatabaseSync(dbPath)
 db.exec(`CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, type TEXT, title TEXT, subtitle TEXT, body TEXT, meta TEXT, accent TEXT);`)
+db.exec(`CREATE TABLE IF NOT EXISTS gaze_sessions (id INTEGER PRIMARY KEY, created_at TEXT);`)
+db.exec(`CREATE TABLE IF NOT EXISTS gaze_clicks (id INTEGER PRIMARY KEY, session_id INTEGER, work_id TEXT, x REAL, y REAL, latency_ms INTEGER, hit INTEGER);`)
 const count = db.prepare("SELECT COUNT(*) as c FROM content WHERE type IN ('lesson','case','exercise')").get().c
 if (!count) {
   const insert = db.prepare('INSERT INTO content (id,type,title,subtitle,body,meta,accent) VALUES (?,?,?,?,?,?,?)')
@@ -49,6 +51,49 @@ app.post('/api/works', (req,res) => {
   const createdAt = new Date().toISOString()
   const info = db.prepare("INSERT INTO content (type,title,subtitle,body,meta,accent) VALUES ('work',?,?,?,?,?)").run(cleanTitle,cleanAuthor,cleanTags,createdAt,'lime')
   res.status(201).json({ id: Number(info.lastInsertRowid), title: cleanTitle, author: cleanAuthor, tags: cleanTags, created_at: createdAt })
+})
+// 第一眼测试：每张作品只保存一个点击点。
+// x / y 为图片内部相对坐标（0–1，原点左上角），与显示尺寸无关。
+const gazeWorkIds = ['person', 'title', 'product', 'color']
+function gazeStats() {
+  const rows = db.prepare('SELECT work_id, x, y FROM gaze_clicks ORDER BY id DESC LIMIT 800').all()
+  const stats = {}
+  for (const row of rows) {
+    if (!stats[row.work_id]) stats[row.work_id] = { total: 0, recent: [] }
+    const bucket = stats[row.work_id]
+    bucket.total += 1
+    if (bucket.recent.length < 60) bucket.recent.push([row.x, row.y])
+  }
+  return stats
+}
+app.get('/api/gaze/stats', (req,res) => {
+  res.json(gazeStats())
+})
+app.post('/api/gaze', (req,res) => {
+  const { answers } = req.body || {}
+  if (!Array.isArray(answers) || answers.length === 0 || answers.length > 8) {
+    return res.status(400).json({ error: 'Answers are required' })
+  }
+  for (const a of answers) {
+    if (!a || typeof a !== 'object') return res.status(400).json({ error: 'Invalid answer' })
+    if (!gazeWorkIds.includes(a.workId)) return res.status(400).json({ error: 'Unknown work' })
+    if (typeof a.x !== 'number' || typeof a.y !== 'number' || !Number.isFinite(a.x) || !Number.isFinite(a.y) || a.x < 0 || a.x > 1 || a.y < 0 || a.y > 1) {
+      return res.status(400).json({ error: 'Click coordinates must be 0..1 relative to the image' })
+    }
+    if (a.latencyMs != null && (typeof a.latencyMs !== 'number' || a.latencyMs < 0 || a.latencyMs > 600000)) {
+      return res.status(400).json({ error: 'Invalid latency' })
+    }
+  }
+  const createdAt = new Date().toISOString()
+  const save = db.transaction((rows) => {
+    const info = db.prepare('INSERT INTO gaze_sessions (created_at) VALUES (?)').run(createdAt)
+    const sessionId = Number(info.lastInsertRowid)
+    const insertClick = db.prepare('INSERT INTO gaze_clicks (session_id, work_id, x, y, latency_ms, hit) VALUES (?,?,?,?,?,?)')
+    for (const a of rows) insertClick.run(sessionId, a.workId, a.x, a.y, a.latencyMs ?? null, a.hit ? 1 : 0)
+    return sessionId
+  })
+  const id = save(answers)
+  res.status(201).json({ id, created_at: createdAt, answers: answers.length, stats: gazeStats() })
 })
 app.use(express.static(path.join(root, 'dist')))
 app.get(/.*/, (req,res) => {

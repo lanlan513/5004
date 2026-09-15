@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import './styles.css'
+import GazeTest from './GazeTest.jsx'
 
 const colorSets = [
   { bg:'#d9ff3f', ink:'#151515', accent:'#ff5938' },
@@ -16,7 +17,7 @@ function useRoute() {
 }
 
 function Header({go, route}) {
-  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/works','作品墙']]
+  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/gaze','第一眼'],['/works','作品墙']]
   return <header className="header"><button className="brand" onClick={()=>go('/')}>STUDIO <span>14</span></button><nav>{links.map(([href,label])=><button key={href} className={route===href?'active':''} onClick={()=>go(href)}>{label}</button>)}</nav><div className="header-right"><span className="status-dot"/>实验室在线 <span className="menu">↗</span></div></header>
 }
 
@@ -75,6 +76,6 @@ function Works({go}) {
 
 function NotFound({go}) { return <main className="not-found"><Pill>404 / LOST GRID</Pill><h1>这块画布<br/>还没有内容。</h1><button className="outline-button" onClick={()=>go('/')}>返回实验室 <Arrow/></button></main> }
 
-function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
+function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/gaze':<GazeTest go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
 
 export default App

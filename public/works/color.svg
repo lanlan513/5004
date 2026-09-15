@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1250" width="1000" height="1250">
+  <rect width="1000" height="1250" fill="#f4f1ea"/>
+  <text x="60" y="80" font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="24" letter-spacing="5" fill="#171717">色彩区域研究 · COLOR FIELD 04</text>
+  <text x="940" y="80" text-anchor="end" font-family="DM Mono, monospace" font-size="24" fill="#171717">1965 / 2026</text>
+  <line x1="60" y1="112" x2="940" y2="112" stroke="#171717" stroke-width="2"/>
+  <rect x="90" y="360" width="560" height="540" fill="#ff5938"/>
+  <rect x="700" y="200" width="200" height="700" fill="#d9d5cc"/>
+  <line x1="730" y1="250" x2="870" y2="250" stroke="#8b877e" stroke-width="3"/>
+  <line x1="730" y1="290" x2="870" y2="290" stroke="#8b877e" stroke-width="3"/>
+  <line x1="730" y1="330" x2="830" y2="330" stroke="#8b877e" stroke-width="3"/>
+  <rect x="90" y="950" width="122" height="122" fill="#d9ff3f"/>
+  <circle cx="330" cy="1030" r="80" fill="#6ac4d7"/>
+  <g fill="#171717">
+    <rect x="470" y="952" width="430" height="16"/>
+    <rect x="470" y="992" width="430" height="8"/>
+    <rect x="470" y="1024" width="360" height="8"/>
+    <rect x="470" y="1056" width="400" height="8"/>
+  </g>
+  <text x="90" y="200" font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="22" fill="#5e5b55">70 / 20 / 10</text>
+  <text x="90" y="240" font-family="DM Mono, 'Noto Sans SC', sans-serif" font-size="22" fill="#5e5b55">主色决定情绪的方向</text>
+  <text x="120" y="666" text-anchor="middle" font-family="DM Mono, monospace" font-size="120" font-weight="500" fill="#fff8ef">70</text>
+  <text x="60" y="1200" font-family="DM Mono, monospace" font-size="22" letter-spacing="4" fill="#171717">FARBFELD · 让一种颜色拥有重量</text>
+</svg>
