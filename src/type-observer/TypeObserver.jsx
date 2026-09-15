@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   LEVELS, FONT_LIBRARY, FONT_GROUPS, FONT_COMBOS, WEIGHT_LABELS,
   DEFAULT_STATE, SAMPLE_SENTENCES, STORAGE_SCHEMES, STORAGE_DRAFT, snapWeight,
-  LIMITS, sanitizeLevels, sanitizeStageWidth, isValidComboId, sanitizeScheme
+  LIMITS, TEXT_LIMIT, SENTENCE_LIMIT,
+  sanitizeLevels, sanitizeStageWidth, isValidComboId, sanitizeScheme
 } from './data.js'
 import { subscribeFonts, requestFonts, retryFont, summarizeStatus } from './fontLoader.js'
 import './styles.css'
@@ -19,18 +20,21 @@ function loadJSON(key, fallback) {
 function initialState() {
   const draft = loadJSON(STORAGE_DRAFT, null)
   if (draft && typeof draft === 'object' && draft.levels) {
-    // 草稿可能来自旧版本或被手改过：合并默认值后统一消毒，缺字段 / 非法字体都不会白屏
+    // 草稿可能来自旧版本或被手改过：合并默认值后统一消毒，缺字段 / 非法字体都不会白屏。
+    // 文字只做类型校验、原样保留完整内容，绝不静默截断（超过输入上限的旧草稿在界面上显式提示）。
     const { levels } = sanitizeLevels(draft.levels)
+    const texts = Object.fromEntries(LEVELS.map(l => [
+      l.key,
+      typeof draft.texts?.[l.key] === 'string' ? draft.texts[l.key] : DEFAULT_STATE.texts[l.key]
+    ]))
     return {
       ...DEFAULT_STATE,
       comboId: isValidComboId(draft.comboId) ? draft.comboId : DEFAULT_STATE.comboId,
       activeLevel: LEVELS.some(l => l.key === draft.activeLevel) ? draft.activeLevel : 'title',
       stageWidth: sanitizeStageWidth(draft.stageWidth),
       gridOn: draft.gridOn === true,
-      texts: Object.fromEntries(LEVELS.map(l => [
-        l.key,
-        typeof draft.texts?.[l.key] === 'string' ? draft.texts[l.key].slice(0, 2000) : DEFAULT_STATE.texts[l.key]
-      ])),
+      texts,
+      overLimit: LEVELS.some(l => texts[l.key].length > TEXT_LIMIT),
       levels
     }
   }
@@ -243,9 +247,11 @@ function TypeObserverInner({ go }) {
   const fillSentence = () => {
     const s = sentence.trim()
     if (!s) return
+    const texts = { title: s, body: `${s}　${s}　再调整参数，观察三个层级如何一起呼吸。`, note: `QUOTED ·「${s}」` }
     setState(st => ({
       ...st,
-      texts: { title: s, body: `${s}　${s}　再调整参数，观察三个层级如何一起呼吸。`, note: `QUOTED ·「${s}」` }
+      texts,
+      overLimit: LEVELS.some(l => texts[l.key].length > TEXT_LIMIT)
     }))
     showToast('一句话已填入三个层级')
   }
@@ -334,6 +340,15 @@ function TypeObserverInner({ go }) {
   const overallStatus = summarizeStatus(usedFamilies)
   const chipText = { loading: '字体异步加载中…（当前显示备用字体）', ready: '网络字体已就绪', fallback: '部分字体不可用 · 已切换备用字体' }[overallStatus]
 
+  // 层级文字更新：界面层用 maxLength 约束新输入；同时保留对超长内容的显式标记，
+  // 这样旧草稿恢复的完整长文本能被看到、能删减，而不是被悄悄切断。
+  const setLevelText = (levelKey, value) =>
+    setState(s => ({
+      ...s,
+      texts: { ...s.texts, [levelKey]: value },
+      overLimit: LEVELS.some(l => (l.key === levelKey ? value : s.texts[l.key]).length > TEXT_LIMIT)
+    }))
+
   const paperPadX = 56
   const contentWidth = Math.max(200, state.stageWidth - paperPadX * 2)
 
@@ -368,29 +383,44 @@ function TypeObserverInner({ go }) {
             <div className="to-sentence-row">
               <input
                 value={sentence}
+                maxLength={SENTENCE_LIMIT}
                 onChange={e => setSentence(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && fillSentence()}
                 placeholder="输入任意一句话…"
               />
               <button className="to-btn-dark" onClick={fillSentence}>填入三层</button>
             </div>
+            {state.overLimit && (
+              <p className="to-limit-warn" role="alert">
+                历史草稿中的文字超过 {TEXT_LIMIT} 字上限，已为你完整保留；删减到上限内后才能继续输入新内容。
+              </p>
+            )}
             <div className="to-samples">
               {SAMPLE_SENTENCES.map(s => (
                 <button key={s} className="to-sample" onClick={() => setSentence(s)}>{s}</button>
               ))}
             </div>
             <div className="to-level-inputs">
-              {LEVELS.map(l => (
-                <div key={l.key} className="to-level-input">
-                  <span className={`to-tag to-tag-${l.key}`}>{l.label}</span>
-                  <textarea
-                    rows={l.key === 'body' ? 3 : 1}
-                    value={state.texts[l.key]}
-                    onChange={e => setState(s => ({ ...s, texts: { ...s.texts, [l.key]: e.target.value } }))}
-                    placeholder={`${l.label}文字…`}
-                  />
-                </div>
-              ))}
+              {LEVELS.map(l => {
+                const len = state.texts[l.key].length
+                const over = len > TEXT_LIMIT
+                return (
+                  <div key={l.key} className="to-level-input">
+                    <div className="to-level-input-head">
+                      <span className={`to-tag to-tag-${l.key}`}>{l.label}</span>
+                      <span className={`to-counter ${over ? 'to-counter-over' : ''}`}>{len} / {TEXT_LIMIT}</span>
+                    </div>
+                    <textarea
+                      rows={l.key === 'body' ? 3 : 1}
+                      value={state.texts[l.key]}
+                      maxLength={over ? undefined : TEXT_LIMIT}
+                      aria-invalid={over}
+                      onChange={e => setLevelText(l.key, e.target.value)}
+                      placeholder={`${l.label}文字…`}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </section>
 

@@ -4,6 +4,11 @@
 export const STORAGE_SCHEMES = 'type-observer-schemes-v1'
 export const STORAGE_DRAFT = 'type-observer-draft-v1'
 
+// 层级文字输入上限：界面上以字数器可见呈现（textarea maxLength 同步限制），
+// 恢复旧草稿时不按此值截断——历史数据中超长的文字要原样保留并提示用户删减。
+export const TEXT_LIMIT = 2000
+export const SENTENCE_LIMIT = 120
+
 export const LEVELS = [
   { key: 'title', label: '标题', en: 'TITLE' },
   { key: 'body', label: '正文', en: 'BODY' },
@@ -233,6 +238,7 @@ export const DEFAULT_STATE = {
   activeLevel: 'title',
   stageWidth: 720,
   gridOn: false,
+  overLimit: false,
   texts: { ...DEFAULT_TEXTS },
   levels: FONT_COMBOS[0].levels
 }
