@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import Wall from './Wall.jsx'
 import './styles.css'
 
 const colorSets = [
@@ -16,7 +17,7 @@ function useRoute() {
 }
 
 function Header({go, route}) {
-  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/works','作品墙']]
+  const links=[['/learn','学习路径'],['/cases','案例档案'],['/practice','练习场'],['/wall','互动墙'],['/works','作品墙']]
   return <header className="header"><button className="brand" onClick={()=>go('/')}>STUDIO <span>14</span></button><nav>{links.map(([href,label])=><button key={href} className={route===href?'active':''} onClick={()=>go(href)}>{label}</button>)}</nav><div className="header-right"><span className="status-dot"/>实验室在线 <span className="menu">↗</span></div></header>
 }
 
@@ -37,6 +38,7 @@ function Home({go}) {
       <div className="hero-footer"><span>SCROLL TO COMPOSE ↓</span><div className="range-wrap"><span>安静</span><input aria-label="视觉张力" type="range" min="0" max="100" value={focus} onChange={e=>setFocus(e.target.value)}/><span>张力</span></div><span>东京 · 2024—∞</span></div>
     </section>
     <section className="intro-strip"><div className="index-mark">/ 01</div><div><h2>设计不是装饰，<br/><em>是一次选择。</em></h2><p>我们把复杂的设计知识拆成可以观察、可以操作的瞬间。每次练习只解决一个问题，让你的眼睛先学会思考。</p></div><button className="circle-button" onClick={()=>go('/practice')}>进入练习场 <Arrow/></button></section>
+    <section className="wall-banner"><div className="index-mark">/ WALL</div><div><h2>六条原则，<em>拖动</em>才会懂。</h2><p>对比 · 重复 · 对齐 · 留白 · 亲密性 · 层级——每个实验只动一个元素，立刻看到关系的变化。</p></div><button className="circle-button" onClick={()=>go('/wall')}>进入互动墙 <Arrow/></button></section>
     <section className="portal-section"><div className="section-head"><div><p className="eyebrow">THE LAB / 四个入口</p><h2>从一个好奇心<br/>开始。</h2></div><span className="mono">拖动 / 点击 / 观察</span></div><div className="portal-grid"><Portal n="01" title="学习路径" desc="从构图到视觉层级，建立你的第一套设计语言。" tone="lime" onClick={()=>go('/learn')}/><Portal n="02" title="案例档案" desc="拆开那些让人过目不忘的海报、系统与字体。" tone="orange" onClick={()=>go('/cases')}/><Portal n="03" title="练习场" desc="30 秒一个小挑战，把概念变成肌肉记忆。" tone="purple" onClick={()=>go('/practice')}/><Portal n="04" title="作品墙" desc="保存你的实验，看看灵感如何彼此碰撞。" tone="blue" onClick={()=>go('/works')}/></div></section>
     <section className="quote-band"><span className="quote-mark">“</span><p>留白不是空白，<br/><strong>是给想法呼吸的地方。</strong></p><span className="mono">— STUDIO 14 NOTE 0001</span></section>
   </main>
@@ -75,6 +77,6 @@ function Works({go}) {
 
 function NotFound({go}) { return <main className="not-found"><Pill>404 / LOST GRID</Pill><h1>这块画布<br/>还没有内容。</h1><button className="outline-button" onClick={()=>go('/')}>返回实验室 <Arrow/></button></main> }
 
-function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
+function App(){ const [route,go]=useRoute(); const pages={'/':<Home go={go}/>, '/learn':<ContentPage type="learn" go={go}/>, '/cases':<ContentPage type="cases" go={go}/>, '/practice':<ContentPage type="practice" go={go}/>, '/wall':<Wall go={go}/>, '/works':<Works go={go}/>}; return <><Header go={go} route={route}/>{pages[route]||<NotFound go={go}/>}<footer><span>STUDIO 14</span><span>一个关于观看的学习实验室</span><span className="mono">© 2024—∞</span></footer></> }
 
 export default App

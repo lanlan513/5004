@@ -21,7 +21,11 @@ npm run build
 npm start
 ```
 
-生产页面和 API 均由 `http://localhost:3001` 提供。服务端包含 history fallback，`/learn`、`/cases`、`/practice` 与 `/works` 均支持直接刷新访问。
+生产页面和 API 均由 `http://localhost:3001` 提供。服务端包含 history fallback，`/learn`、`/cases`、`/practice`、`/wall` 与 `/works` 均支持直接刷新访问。
+
+## 视觉原理互动墙
+
+`/wall` 把对比、重复、对齐、留白、亲密性、层级做成六个可拖动的小实验。所有实验共享同一份 Schema（`src/experiments.js`）：每个实验只是 `{ control, elements, metric, guides }` 的配置，由 `src/Wall.jsx` 的统一渲染器生成场景、拖动交互、「原始状态 / 修改状态」切换与实时指标。新增实验只需追加一份配置。
 
 ## 数据接口
 
