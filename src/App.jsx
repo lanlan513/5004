@@ -94,6 +94,14 @@ function UnitDialog({item,type,onClose}) {
   return <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}><section className={'unit-dialog card-'+item.accent} role="dialog" aria-modal="true" aria-labelledby="unit-title" onMouseDown={e=>e.stopPropagation()}><div className="dialog-top"><Pill>{item.meta}</Pill><button className="icon-button" aria-label="关闭单元" onClick={onClose}>×</button></div><div className="dialog-art"><span>{type==='practice'?'30″':'Aa'}</span></div><div className="dialog-copy"><p className="eyebrow">核心概念</p><h2 id="unit-title">{item.title}</h2><h3>{item.subtitle}</h3><p>{item.body}</p><ol><li>{notes[0]}</li><li>{notes[1]}</li></ol><button className="outline-button" onClick={onClose}>读完，返回列表 <Arrow/></button></div></section></div>
 }
 
+function briefText(part) {
+  return typeof part === 'string' ? part : part?.label || ''
+}
+
+function briefHint(part) {
+  return typeof part === 'string' ? '' : part?.hint || ''
+}
+
 function makeDesign(brief) {
   return {
     palette:'signal',
@@ -101,8 +109,8 @@ function makeDesign(brief) {
     layout:'hero',
     motif:'circle',
     density:2,
-    headline:brief.theme,
-    subline:`${brief.audience} · ${brief.scene}`
+    headline:briefText(brief.theme),
+    subline:`${briefText(brief.audience)} · ${briefText(brief.scene)}`
   }
 }
 
@@ -136,8 +144,8 @@ function OptionGroup({label, options, value, onChange, disabled}) {
 function BriefCard({kind, label, hint, wide=false}) {
   return <article className={`brief-card brief-${kind} ${wide?'wide':''}`}>
     <span className="mono">{label}</span>
-    <h3>{hint.label}</h3>
-    <p>{hint.hint}</p>
+    <h3>{briefText(hint)}</h3>
+    <p>{briefHint(hint)}</p>
   </article>
 }
 
@@ -409,10 +417,10 @@ function DrawArchive({refreshKey}) {
           <MiniPoster result={task.result} taskId={task.id}/>
           <div className="compare-brief">
             <span className="mono">#{String(task.id).padStart(3,'0')} · {new Date(task.submitted_at).toLocaleDateString('zh-CN')}</span>
-            <b>{task.brief.theme}</b>
-            <p>{task.brief.audience}</p>
-            <p>{task.brief.scene}</p>
-            <em>{task.brief.constraint}</em>
+            <b>{briefText(task.brief.theme)}</b>
+            <p>{briefText(task.brief.audience)}</p>
+            <p>{briefText(task.brief.scene)}</p>
+            <em>{briefText(task.brief.constraint)}</em>
             {task.reflection && <blockquote>{task.reflection}</blockquote>}
           </div>
         </article>)}
@@ -424,11 +432,11 @@ function DrawArchive({refreshKey}) {
         <MiniPoster result={task.result} taskId={task.id} className="archive-poster"/>
         <div className="archive-info">
           <span className="mono">#{String(task.id).padStart(3,'0')} · {new Date(task.submitted_at).toLocaleDateString('zh-CN')}</span>
-          <h3>{task.brief.theme}</h3>
+          <h3>{briefText(task.brief.theme)}</h3>
           <dl>
-            <dt>人群</dt><dd>{task.brief.audience}</dd>
-            <dt>场景</dt><dd>{task.brief.scene}</dd>
-            <dt>限制</dt><dd>{task.brief.constraint}</dd>
+            <dt>人群</dt><dd>{briefText(task.brief.audience)}</dd>
+            <dt>场景</dt><dd>{briefText(task.brief.scene)}</dd>
+            <dt>限制</dt><dd>{briefText(task.brief.constraint)}</dd>
           </dl>
           {task.reflection && <p>{task.reflection}</p>}
           <button className={compareIds.includes(task.id)?'outline-button selected':'outline-button'} disabled={!compareIds.includes(task.id)&&compareIds.length>=3} onClick={()=>toggleCompare(task.id)}>{compareIds.includes(task.id)?'移出比较':'加入比较'}</button>
