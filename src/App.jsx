@@ -151,6 +151,25 @@ function DrawStudio() {
   const [submitError,setSubmitError]=useState('')
   const [submitted,setSubmitted]=useState(null)
   const [loadingTask,setLoadingTask]=useState(true)
+  const [draftStatus,setDraftStatus]=useState('')
+  const draftTimer=React.useRef(null)
+  const lastSavedDraft=React.useRef('')
+
+  React.useEffect(()=>()=>window.clearTimeout(draftTimer.current),[])
+
+  const hydrateTask=(activeTask)=>{
+    setTask(activeTask)
+    if(activeTask.draft?.result) {
+      setDesign(activeTask.draft.result)
+      setReflection(activeTask.draft.reflection || '')
+      lastSavedDraft.current=JSON.stringify({result:activeTask.draft.result,reflection:activeTask.draft.reflection || ''})
+    } else {
+      const initialDesign=makeDesign(activeTask.brief)
+      setDesign(initialDesign)
+      setReflection('')
+      lastSavedDraft.current=JSON.stringify({result:initialDesign,reflection:''})
+    }
+  }
 
   React.useEffect(()=>{
     const controller = new AbortController()
@@ -161,8 +180,8 @@ function DrawStudio() {
       })
       .then(activeTask=>{
         if(activeTask) {
-          setTask(activeTask)
-          setDesign(makeDesign(activeTask.brief))
+          hydrateTask(activeTask)
+          if(activeTask.draft) setDraftStatus('saved')
         }
       })
       .catch(error=>{
@@ -174,6 +193,36 @@ function DrawStudio() {
     return()=>controller.abort()
   },[])
 
+  React.useEffect(()=>{
+    if(!task || !design || submitted || task.status !== 'active') return
+    const payload={result:design,reflection}
+    const signature=JSON.stringify(payload)
+    if(signature === lastSavedDraft.current) return
+    setDraftStatus('saving')
+    const flushDraft=(keepalive=false)=>fetch(`/api/draw-tasks/${task.id}/draft`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+      keepalive
+    }).then(response=>{
+      if(!response.ok) throw new Error('save draft failed')
+      lastSavedDraft.current=signature
+      setDraftStatus('saved')
+    }).catch(()=>{
+      if(!keepalive) setDraftStatus('error')
+    })
+    const handlePageHide=()=>{
+      if(JSON.stringify(payload) !== lastSavedDraft.current) flushDraft(true)
+    }
+    window.addEventListener('pagehide',handlePageHide)
+    window.clearTimeout(draftTimer.current)
+    draftTimer.current=window.setTimeout(()=>flushDraft(),500)
+    return()=>{
+      window.removeEventListener('pagehide',handlePageHide)
+      window.clearTimeout(draftTimer.current)
+    }
+  },[task,design,reflection,submitted])
+
   const drawTask=async()=>{
     if(drawing||saving) return
     setDrawing(true)
@@ -182,9 +231,12 @@ function DrawStudio() {
       const response=await fetch('/api/draw-tasks',{method:'POST'})
       if(!response.ok) throw new Error('draw failed')
       const nextTask=await response.json()
+      const initialDesign=makeDesign(nextTask.brief)
       setTask(nextTask)
-      setDesign(makeDesign(nextTask.brief))
+      setDesign(initialDesign)
       setReflection('')
+      lastSavedDraft.current=JSON.stringify({result:initialDesign,reflection:''})
+      setDraftStatus('')
       setSubmitted(null)
       setSubmitError('')
     } catch {
@@ -216,7 +268,10 @@ function DrawStudio() {
       if(!response.ok) throw new Error(data.error || 'submit failed')
       setTask(data)
       setDesign(data.result)
+      setReflection(data.reflection)
+      lastSavedDraft.current=JSON.stringify({result:data.result,reflection:data.reflection})
       setSubmitted(data)
+      setDraftStatus('')
     } catch(error) {
       setSubmitError(error.message === 'Task has already been submitted' ? '这张任务已经提交过了。' : '提交失败，请检查方案后再试。')
     } finally {
@@ -297,6 +352,9 @@ function DrawStudio() {
           <div className="workspace-actions">
             <button className="outline-button" disabled={saving||submitted} onClick={submitWork}>{saving?'提交中…':submitted?'已提交 ✓':'提交作品'} <Arrow/></button>
             <button className="text-link" disabled={drawing||saving} onClick={drawTask}>{submitted?'抽下一张任务':'放弃并换一题'}</button>
+            {!submitted && draftStatus && <span className={`draft-status draft-${draftStatus}`} role="status">
+              {draftStatus==='saving'?'草稿保存中…':draftStatus==='saved'?'草稿已保存':draftStatus==='error'?'草稿保存失败':''}
+            </span>}
           </div>
         </div>
       </div>

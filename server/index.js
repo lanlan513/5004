@@ -34,11 +34,15 @@ db.exec(`
     brief TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',
     result TEXT,
+    draft TEXT,
     reflection TEXT,
     created_at TEXT NOT NULL,
     submitted_at TEXT
   );
 `)
+
+const drawTaskColumns = db.prepare('PRAGMA table_info(draw_tasks)').all().map(column => column.name)
+if (!drawTaskColumns.includes('draft')) db.exec('ALTER TABLE draw_tasks ADD COLUMN draft TEXT')
 
 const contentCount = db.prepare("SELECT COUNT(*) as c FROM content WHERE type IN ('lesson','case','exercise')").get().c
 if (!contentCount) {
@@ -111,6 +115,7 @@ const selectDrawTask = db.prepare('SELECT * FROM draw_tasks WHERE id = ?')
 const selectDrawTasks = db.prepare('SELECT * FROM draw_tasks WHERE status = ? ORDER BY submitted_at DESC, id DESC')
 const selectActiveDrawTasks = db.prepare("SELECT * FROM draw_tasks WHERE status = 'active' ORDER BY id DESC")
 const discardActiveDrawTasks = db.prepare("UPDATE draw_tasks SET status = 'discarded' WHERE status = 'active'")
+const saveDraftDrawTask = db.prepare('UPDATE draw_tasks SET draft = ? WHERE id = ?')
 const submitDrawTask = db.prepare('UPDATE draw_tasks SET status = ?, result = ?, reflection = ?, submitted_at = ? WHERE id = ?')
 
 function pickBrief() {
@@ -122,27 +127,38 @@ function pickBrief() {
   }
 }
 
+function briefPart(option) {
+  return { label: option.label, hint: option.hint }
+}
+
 function serializeBrief(brief) {
   return JSON.stringify({
-    theme: brief.theme.label,
-    audience: brief.audience.label,
-    scene: brief.scene.label,
-    constraint: brief.constraint.label,
-    hints: {
-      theme: brief.theme.hint,
-      audience: brief.audience.hint,
-      scene: brief.scene.hint,
-      constraint: brief.constraint.hint
-    }
+    theme: briefPart(brief.theme),
+    audience: briefPart(brief.audience),
+    scene: briefPart(brief.scene),
+    constraint: briefPart(brief.constraint)
   })
+}
+
+function normalizeBrief(rawBrief) {
+  const brief = typeof rawBrief === 'string' ? JSON.parse(rawBrief) : rawBrief
+  const hints = brief.hints || {}
+  for (const key of ['theme','audience','scene','constraint']) {
+    if (typeof brief[key] === 'string') {
+      brief[key] = { label: brief[key], hint: hints[key] || '' }
+    }
+  }
+  delete brief.hints
+  return brief
 }
 
 function mapTask(row) {
   return {
     id: row.id,
-    brief: JSON.parse(row.brief),
+    brief: normalizeBrief(row.brief),
     status: row.status,
     result: row.result ? JSON.parse(row.result) : null,
+    draft: row.draft ? JSON.parse(row.draft) : null,
     reflection: row.reflection || '',
     created_at: row.created_at,
     submitted_at: row.submitted_at
@@ -171,6 +187,26 @@ function validateResult(result) {
   output.headline = asString(result.headline, 40)
   output.subline = asString(result.subline, 70)
   if (!output.headline || !output.subline) return null
+  return output
+}
+
+function validateDraft(draft) {
+  if (!draft || typeof draft !== 'object' || Array.isArray(draft)) return null
+  const result = draft.result
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null
+  const output = { result: {} }
+  for (const [key, allowed] of Object.entries(resultEnums)) {
+    if (!allowed.includes(result[key])) return null
+    output.result[key] = result[key]
+  }
+  if (typeof result.headline !== 'string' || typeof result.subline !== 'string') return null
+  if (result.headline.length > 40 || result.subline.length > 70) return null
+  output.result.headline = result.headline
+  output.result.subline = result.subline
+
+  const reflection = draft.reflection ?? ''
+  if (typeof reflection !== 'string' || reflection.length > 280) return null
+  output.reflection = reflection
   return output
 }
 
@@ -205,6 +241,19 @@ app.get('/api/draw-tasks/:id', (req,res) => {
   const row = selectDrawTask.get(id)
   if (!row) return res.status(404).json({ error: 'Task not found' })
   res.json(mapTask(row))
+})
+
+app.put('/api/draw-tasks/:id/draft', (req,res) => {
+  const id = Number(req.params.id)
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid task id' })
+  const row = selectDrawTask.get(id)
+  if (!row) return res.status(404).json({ error: 'Task not found' })
+  if (row.status !== 'active') return res.status(409).json({ error: 'Task cannot be edited' })
+
+  const draft = validateDraft(req.body)
+  if (!draft) return res.status(400).json({ error: 'Invalid draft data' })
+  saveDraftDrawTask.run(JSON.stringify(draft), id)
+  res.json(mapTask(selectDrawTask.get(id)))
 })
 
 app.get('/api/draw-tasks', (req,res) => {
