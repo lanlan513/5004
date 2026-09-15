@@ -85,15 +85,20 @@ app.post('/api/gaze', (req,res) => {
     }
   }
   const createdAt = new Date().toISOString()
-  const save = db.transaction((rows) => {
+  // node:sqlite 没有 better-sqlite3 的 db.transaction()，用显式事务语句。
+  let sessionId
+  try {
+    db.exec('BEGIN')
     const info = db.prepare('INSERT INTO gaze_sessions (created_at) VALUES (?)').run(createdAt)
-    const sessionId = Number(info.lastInsertRowid)
+    sessionId = Number(info.lastInsertRowid)
     const insertClick = db.prepare('INSERT INTO gaze_clicks (session_id, work_id, x, y, latency_ms, hit) VALUES (?,?,?,?,?,?)')
-    for (const a of rows) insertClick.run(sessionId, a.workId, a.x, a.y, a.latencyMs ?? null, a.hit ? 1 : 0)
-    return sessionId
-  })
-  const id = save(answers)
-  res.status(201).json({ id, created_at: createdAt, answers: answers.length, stats: gazeStats() })
+    for (const a of answers) insertClick.run(sessionId, a.workId, a.x, a.y, a.latencyMs ?? null, a.hit ? 1 : 0)
+    db.exec('COMMIT')
+  } catch (err) {
+    db.exec('ROLLBACK')
+    throw err
+  }
+  res.status(201).json({ id: sessionId, created_at: createdAt, answers: answers.length, stats: gazeStats() })
 })
 app.use(express.static(path.join(root, 'dist')))
 app.get(/.*/, (req,res) => {

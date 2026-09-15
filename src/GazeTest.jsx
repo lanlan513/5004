@@ -18,7 +18,7 @@ function WorkLayers({ work, userPoint, stats, mode }) {
     ? [...work.observers, ...stats.recent]
     : work.observers)
   return <div className="gaze-layers" aria-hidden="true">
-    {mode !== 'prime' && work.zones.map((zone, i) => {
+    {mode === 'reveal' && work.zones.map((zone, i) => {
       const style = zone.type === 'ellipse'
         ? { left: `${(zone.cx - zone.rx) * 100}%`, top: `${(zone.cy - zone.ry) * 100}%`, width: `${zone.rx * 200}%`, height: `${zone.ry * 200}%`, borderRadius: '50%' }
         : { left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }
@@ -27,7 +27,7 @@ function WorkLayers({ work, userPoint, stats, mode }) {
         <div className="gaze-zone-label" style={{ left: `${(zone.type === 'ellipse' ? zone.cx - zone.rx : zone.x) * 100}%`, top: `${(zone.type === 'ellipse' ? zone.cy - zone.ry : zone.y) * 100}%` }}><span>{zone.note}</span></div>
       </React.Fragment>
     })}
-    {mode !== 'prime' && dots.map((p, i) =>
+    {mode === 'reveal' && dots.map((p, i) =>
       <span key={i} className="gaze-dot" style={{ left: `${p[0] * 100}%`, top: `${p[1] * 100}%` }}/>
     )}
     {userPoint && (
@@ -35,7 +35,7 @@ function WorkLayers({ work, userPoint, stats, mode }) {
         <span className="gaze-user-ring"/>你
       </span>
     )}
-    {mode !== 'prime' && <p className="gaze-layer-count mono">{count} 位观察者的视觉焦点</p>}
+    {mode === 'reveal' && <p className="gaze-layer-count mono">{count} 位观察者的视觉焦点</p>}
   </div>
 }
 
