@@ -27,7 +27,11 @@ npm start
 
 - `GET /api/content`：全部统一内容
 - `GET /api/content?type=lesson|case|exercise`：按内容类型筛选
+- `POST /api/draw-tasks`：服务端随机生成一张设计任务 brief
+- `GET /api/draw-tasks/active`：读取最近一张尚未提交的任务
+- `GET /api/draw-tasks`：读取已经提交的抽签任务与最终视觉方案
+- `POST /api/draw-tasks/:id/submit`：提交指定任务的视觉结果和设计备注
 - `GET /api/works`：读取作品
 - `POST /api/works`：保存作品
 
-知识、案例、练习和作品全部存储在统一的 `content` 表中，共享 `id / type / title / subtitle / body / meta / accent` 数据结构，页面只负责表现与交互。
+知识、案例和练习存储在统一的 `content` 表中，共享 `id / type / title / subtitle / body / meta / accent` 数据结构。抽签器使用独立的 `task_options` 与 `draw_tasks` 表：随机主题、目标人群、场景和限制由 API 组合生成，提交时完整保存 brief、视觉参数与备注，不做自动评分。
