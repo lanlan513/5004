@@ -278,6 +278,24 @@
   accent-color: var(--to-ink);
   height: 18px;
 }
+.to-slider-note {
+  font-style: normal;
+  font: 9px/1 'DM Mono', 'Noto Sans SC', monospace;
+  color: var(--to-sub);
+  margin-left: 8px;
+  letter-spacing: .06em;
+}
+.to-weight-stops { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px }
+.to-weight-stops button {
+  font: 10px/1 'DM Mono', 'Noto Sans SC', monospace;
+  color: var(--to-sub);
+  border: 1px solid var(--to-line);
+  border-radius: 100px;
+  padding: 4px 8px;
+  background: #fff;
+}
+.to-weight-stops button:hover { color: var(--to-ink); border-color: var(--to-ink) }
+.to-weight-stops button.on { background: var(--to-ink); color: var(--to-paper); border-color: var(--to-ink) }
 
 /* ---------------- 04 方案 ---------------- */
 .to-scheme-list { display: flex; flex-direction: column; gap: 7px }

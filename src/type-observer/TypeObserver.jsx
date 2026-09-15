@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   LEVELS, FONT_LIBRARY, FONT_GROUPS, FONT_COMBOS, WEIGHT_LABELS,
-  DEFAULT_STATE, SAMPLE_SENTENCES, STORAGE_SCHEMES, STORAGE_DRAFT, snapWeight
+  DEFAULT_STATE, SAMPLE_SENTENCES, STORAGE_SCHEMES, STORAGE_DRAFT, snapWeight,
+  LIMITS, sanitizeLevels, sanitizeStageWidth, isValidComboId, sanitizeScheme
 } from './data.js'
 import { subscribeFonts, requestFonts, retryFont, summarizeStatus } from './fontLoader.js'
 import './styles.css'
@@ -17,21 +18,31 @@ function loadJSON(key, fallback) {
 
 function initialState() {
   const draft = loadJSON(STORAGE_DRAFT, null)
-  if (draft && draft.levels) {
-    // 合并默认值，防止旧草稿缺字段
+  if (draft && typeof draft === 'object' && draft.levels) {
+    // 草稿可能来自旧版本或被手改过：合并默认值后统一消毒，缺字段 / 非法字体都不会白屏
+    const { levels } = sanitizeLevels(draft.levels)
     return {
       ...DEFAULT_STATE,
-      ...draft,
-      texts: { ...DEFAULT_STATE.texts, ...(draft.texts || {}) },
-      levels: Object.fromEntries(LEVELS.map(l => [l.key, { ...DEFAULT_STATE.levels[l.key], ...(draft.levels?.[l.key] || {}) }]))
+      comboId: isValidComboId(draft.comboId) ? draft.comboId : DEFAULT_STATE.comboId,
+      activeLevel: LEVELS.some(l => l.key === draft.activeLevel) ? draft.activeLevel : 'title',
+      stageWidth: sanitizeStageWidth(draft.stageWidth),
+      gridOn: draft.gridOn === true,
+      texts: Object.fromEntries(LEVELS.map(l => [
+        l.key,
+        typeof draft.texts?.[l.key] === 'string' ? draft.texts[l.key].slice(0, 2000) : DEFAULT_STATE.texts[l.key]
+      ])),
+      levels
     }
   }
   return structuredClone(DEFAULT_STATE)
 }
 
+// 读取已保存方案：逐条消毒，并把清洗后的结果写回，损坏条目被丢弃而不是拖垮整页
 function loadSchemes() {
   const list = loadJSON(STORAGE_SCHEMES, [])
-  return Array.isArray(list) ? list : []
+  if (!Array.isArray(list)) return []
+  const clean = list.map(sanitizeScheme).filter(Boolean)
+  return clean
 }
 
 /* ------------------------------- 文字测量 ------------------------------- */
@@ -54,7 +65,7 @@ function tokenize(text) {
 function measureBlock(text, cfg, widthPx) {
   if (!measureCanvas) measureCanvas = document.createElement('canvas')
   const ctx = measureCanvas.getContext('2d')
-  ctx.font = `${cfg.weight} ${cfg.size}px ${FONT_LIBRARY[cfg.family].stack}`
+  ctx.font = `${cfg.weight} ${cfg.size}px ${fontSpec(cfg.family).stack}`
   const trackPx = cfg.size * cfg.tracking
   const widthOf = str => ctx.measureText(str).width + Math.max(0, trackPx) * Math.max(0, [...str].length - 1)
   const paragraphs = String(text || '').split('\n')
@@ -66,7 +77,7 @@ function measureBlock(text, cfg, widthPx) {
     let lineChars = 0
     for (const tk of tokenize(para)) {
       if (tk.t === 'space' && lineW === 0) continue // 行首空白吞掉
-      const w = tk.t === 'space' ? widthOf(tk.v) : widthOf(tk.v)
+      const w = widthOf(tk.v)
       if (lineW + w > widthPx && lineW > 0) {
         lines += 1
         maxChars = Math.max(maxChars, lineChars)
@@ -83,6 +94,53 @@ function measureBlock(text, cfg, widthPx) {
   return { lines: Math.max(1, lines), paragraphs: paragraphs.length, charsPerLine: maxChars }
 }
 
+// 渲染兜底：万一 state 中出现未知字体 ID，也绝不让 .stack 取值抛错白屏
+const FALLBACK_FONT = FONT_LIBRARY.systemSans
+function fontSpec(id) {
+  return FONT_LIBRARY[id] || FALLBACK_FONT
+}
+
+/* ------------------------------- 错误边界 ------------------------------- */
+
+class TypeErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  componentDidCatch(error) { console.error('[type-observer] render error:', error) }
+  reset = () => {
+    try {
+      localStorage.removeItem(STORAGE_DRAFT)
+      localStorage.removeItem(STORAGE_SCHEMES)
+    } catch { /* ignore */ }
+    this.setState({ error: null })
+    window.location.reload()
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#f4f1ea', padding: 24, fontFamily: 'system-ui,sans-serif' }}>
+        <div style={{ maxWidth: 460, border: '1px solid #171717', borderRadius: 12, background: '#fffaf1', padding: 28 }}>
+          <p style={{ fontFamily: 'monospace', fontSize: 11, letterSpacing: '.12em', color: '#ff5938', margin: '0 0 10px' }}>TYPE OBSERVER · RECOVERY</p>
+          <h2 style={{ fontSize: 22, margin: '0 0 10px' }}>排版数据无法渲染，已保护当前页面</h2>
+          <p style={{ fontSize: 13, lineHeight: 1.7, color: '#6b6861', margin: '0 0 18px' }}>
+            本地保存的草稿或方案包含无法识别的数据。清除本地数据并刷新即可恢复，内置的默认排版方案不会丢失。
+          </p>
+          <button onClick={this.reset} style={{ background: '#171717', color: '#f4f1ea', borderRadius: 100, padding: '10px 18px', fontSize: 13, cursor: 'pointer' }}>
+            清除本地数据并重载
+          </button>
+        </div>
+      </div>
+    )
+  }
+}
+
+export default function TypeObserver(props) {
+  return (
+    <TypeErrorBoundary>
+      <TypeObserverInner {...props} />
+    </TypeErrorBoundary>
+  )
+}
+
 /* ------------------------------- 主组件 ------------------------------- */
 
 const SLIDERS = [
@@ -92,7 +150,7 @@ const SLIDERS = [
   { key: 'tracking', label: '字距', min: -0.05, max: 0.5, step: 0.01, fmt: v => `${Math.round(v * 1000) / 10}‰ em` }
 ]
 
-export default function TypeObserver({ go }) {
+function TypeObserverInner({ go }) {
   const [state, setState] = useState(initialState)
   const [fontStatus, setFontStatus] = useState({})
   const [schemes, setSchemes] = useState(loadSchemes)
@@ -145,14 +203,29 @@ export default function TypeObserver({ go }) {
     setState(s => ({ ...s, levels: { ...s.levels, [levelKey]: { ...s.levels[levelKey], ...patch } } }))
 
   const changeFamily = family => {
+    if (!FONT_LIBRARY[family]) {
+      showToast(`字体「${family}」不存在，已忽略`)
+      return
+    }
     setState(s => {
       const cur = s.levels[active]
       const weight = snapWeight(family, cur.weight)
-      const snapped = weight !== cur.weight
-      if (snapped) setTimeout(() => showToast(`该字体不支持 ${cur.weight}，已吸附为 ${weight}`), 0)
+      if (weight !== cur.weight) setTimeout(() => showToast(`该字体不支持 ${cur.weight}，已吸附为 ${weight}`), 0)
       return { ...s, levels: { ...s.levels, [active]: { ...cur, family, weight } } }
     })
     requestFonts([family])
+  }
+
+  // 字重滑杆专用：范围 / 步进完全取自字体元数据，拖动中即吸附到最近支持档位
+  const weightSpec = fontSpec(activeCfg.family).weights
+  const weightIsFixed = weightSpec.type === 'fixed'
+  const weightMin = weightIsFixed ? weightSpec.values[0] : weightSpec.min
+  const weightMax = weightIsFixed ? weightSpec.values[weightSpec.values.length - 1] : weightSpec.max
+  const weightStep = weightIsFixed ? 1 : weightSpec.step
+  const weightStops = weightIsFixed ? weightSpec.values : null
+  const onWeightInput = raw => {
+    const weight = snapWeight(activeCfg.family, Number(raw))
+    if (weight !== activeCfg.weight) patchLevel({ weight })
   }
 
   const applyCombo = combo => {
@@ -210,20 +283,26 @@ export default function TypeObserver({ go }) {
     showToast(`排版方案「${name}」已保存`)
   }
   const applyScheme = scheme => {
-    const d = scheme.data
+    const d = scheme?.data
+    if (!d) { showToast('方案数据损坏，无法载入'); return }
+    // 载入时再次消毒：无论数据来自本地还是导入，非法字体 / 数值都会被安全替换
+    const { levels, fixes } = sanitizeLevels(d.levels, state.levels)
     setState(s => ({
       ...s,
-      comboId: d.comboId || s.comboId,
-      stageWidth: d.stageWidth || s.stageWidth,
-      levels: Object.fromEntries(LEVELS.map(l => [l.key, { ...s.levels[l.key], ...(d.levels?.[l.key] || {}) }]))
+      comboId: isValidComboId(d.comboId) ? d.comboId : s.comboId,
+      stageWidth: d.stageWidth ? sanitizeStageWidth(d.stageWidth) : s.stageWidth,
+      levels
     }))
-    requestFonts(LEVELS.map(l => d.levels?.[l.key]?.family).filter(Boolean))
-    showToast(`已载入方案「${scheme.name}」`)
+    requestFonts(LEVELS.map(l => levels[l.key].family))
+    showToast(fixes.length
+      ? `已载入方案「${scheme.name}」，${fixes.length} 处参数已自动修正`
+      : `已载入方案「${scheme.name}」`)
   }
   const deleteScheme = id => persistSchemes(schemes.filter(s => s.id !== id))
 
   const exportSchemes = () => {
-    const blob = new Blob([JSON.stringify(schemes, null, 2)], { type: 'application/json' })
+    const payload = schemes.map(({ id, name, savedAt, data }) => ({ id, name, savedAt, data }))
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -238,12 +317,14 @@ export default function TypeObserver({ go }) {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result)
-        const valid = (Array.isArray(parsed) ? parsed : [parsed]).filter(
-          x => x && x.id && x.name && x.data && x.data.levels
-        )
-        if (!valid.length) throw new Error('empty')
-        persistSchemes([...valid, ...schemes])
-        showToast(`已导入 ${valid.length} 个方案`)
+        const rawList = Array.isArray(parsed) ? parsed : [parsed]
+        const clean = rawList.map(sanitizeScheme).filter(Boolean)
+        if (!clean.length) throw new Error('empty')
+        persistSchemes([...clean, ...schemes])
+        const fixed = clean.reduce((n, s) => n + (s.fixes?.length || 0), 0)
+        showToast(fixed
+          ? `已导入 ${clean.length} 个方案，${fixed} 处非法参数已自动修正（未知字体回退默认）`
+          : `已导入 ${clean.length} 个方案`)
       } catch { showToast('文件不是有效的排版方案') }
     }
     reader.readAsText(file)
@@ -362,12 +443,12 @@ export default function TypeObserver({ go }) {
                   onClick={() => setState(s => ({ ...s, activeLevel: l.key }))}
                 >
                   <i className={`to-tag to-tag-${l.key}`}>{l.label}</i>
-                  {FONT_LIBRARY[state.levels[l.key].family].label.split(' ')[0]}
+                  {fontSpec(state.levels[l.key].family).label.split(' ')[0]}
                 </button>
               ))}
             </div>
 
-            <label className="to-field-label">字体（{FONT_LIBRARY[activeCfg.family].label}）</label>
+            <label className="to-field-label">字体（{fontSpec(activeCfg.family).label}）</label>
             <select className="to-select" value={activeCfg.family} onChange={e => changeFamily(e.target.value)}>
               {FONT_GROUPS.map(g => (
                 <optgroup key={g.group} label={g.group}>
@@ -379,23 +460,43 @@ export default function TypeObserver({ go }) {
             </select>
 
             {SLIDERS.map(sl => {
-              const spec = FONT_LIBRARY[activeCfg.family]
+              const spec = fontSpec(activeCfg.family)
               const fixedSingle = sl.key === 'weight' && spec.weights.type === 'fixed' && spec.weights.values.length === 1
+              // 字重滑块的可选范围严格限定为该字体真实支持的档位
+              const isWeight = sl.key === 'weight'
+              const min = isWeight ? weightMin : sl.min
+              const max = isWeight ? weightMax : sl.max
+              const step = isWeight ? weightStep : sl.step
+              const showStops = isWeight && weightStops && !fixedSingle
               return (
                 <div className="to-slider" key={sl.key} data-disabled={fixedSingle}>
                   <div className="to-slider-head">
-                    <span>{sl.label}</span>
+                    <span>{sl.label}{isWeight && weightIsFixed && !fixedSingle && <em className="to-slider-note">该字体仅提供离散档位</em>}</span>
                     <b>{fixedSingle ? `仅 ${activeCfg.weight}（${WEIGHT_LABELS[activeCfg.weight]}）` : sl.fmt(activeCfg[sl.key])}</b>
                   </div>
                   <input
                     type="range"
-                    min={fixedSingle ? activeCfg.weight : sl.min}
-                    max={fixedSingle ? activeCfg.weight : sl.max}
-                    step={sl.step}
+                    min={min}
+                    max={max}
+                    step={step}
                     value={activeCfg[sl.key]}
                     disabled={fixedSingle}
-                    onChange={e => patchLevel({ [sl.key]: Number(e.target.value) })}
+                    onChange={e => isWeight
+                      ? onWeightInput(e.target.value)
+                      : patchLevel({ [sl.key]: Number(e.target.value) })}
                   />
+                  {showStops && (
+                    <div className="to-weight-stops">
+                      {weightStops.map(w => (
+                        <button
+                          key={w}
+                          className={w === activeCfg.weight ? 'on' : ''}
+                          title={WEIGHT_LABELS[w]}
+                          onClick={() => patchLevel({ weight: w })}
+                        >{w}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -461,7 +562,7 @@ export default function TypeObserver({ go }) {
             >
               {LEVELS.map(l => {
                 const cfg = state.levels[l.key]
-                const spec = FONT_LIBRARY[cfg.family]
+                const spec = fontSpec(cfg.family)
                 return (
                   <div
                     key={l.key}
@@ -571,7 +672,7 @@ export default function TypeObserver({ go }) {
                 return (
                   <span key={l.key}>
                     <i className={`to-tag to-tag-${l.key}`}>{l.label}</i>
-                    {FONT_LIBRARY[c.family].label} · {c.size}px · {c.weight} · LH {c.lineHeight.toFixed(2)}
+                    {fontSpec(c.family).label} · {c.size}px · {c.weight} · LH {c.lineHeight.toFixed(2)}
                   </span>
                 )
               })}

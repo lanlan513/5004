@@ -236,3 +236,99 @@ export const DEFAULT_STATE = {
   texts: { ...DEFAULT_TEXTS },
   levels: FONT_COMBOS[0].levels
 }
+
+/* ----------------------------- 数据校验 / 消毒 ----------------------------- */
+// 任何来自 localStorage / 导入 JSON / URL 的方案数据都必须经过这里，
+// 保证字体 ID 存在、数值字段是有限数字且落在合理区间，页面在任意数据下都可渲染。
+
+export const LIMITS = {
+  size: { min: 10, max: 96, step: 1 },
+  weight: { min: 100, max: 900, step: 100 },
+  lineHeight: { min: 1, max: 2.4, step: 0.05 },
+  tracking: { min: -0.05, max: 0.5, step: 0.01 }
+}
+
+function finiteNumber(v) {
+  return typeof v === 'number' && Number.isFinite(v)
+}
+
+function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v))
+}
+
+// 消毒单个层级配置。返回 { value, fixes: string[] }
+export function sanitizeLevel(raw, fallback) {
+  const src = raw && typeof raw === 'object' ? raw : {}
+  const fixes = []
+
+  // family：必须是字体库中存在的 ID，否则回退默认字体
+  let family = fallback.family
+  if (typeof src.family === 'string' && FONT_LIBRARY[src.family]) {
+    family = src.family
+  } else if (src.family !== undefined) {
+    fixes.push(`字体「${String(src.family)}」不在字体库`)
+  }
+
+  const pickNum = (key, defVal) => {
+    // 数字或可转换为有限数字的字符串都接受（JSON 里的 "16" 不应被丢弃），其余回退
+    const n = typeof src[key] === 'string' ? Number(src[key].trim()) : src[key]
+    if (!finiteNumber(n)) return defVal
+    return clamp(n, LIMITS[key].min, LIMITS[key].max)
+  }
+
+  let size = pickNum('size', fallback.size)
+  let lineHeight = pickNum('lineHeight', fallback.lineHeight)
+  let tracking = pickNum('tracking', fallback.tracking)
+
+  // weight：先保证是数字（数字字符串也接受），再吸附到所选字体真实支持的最近档位
+  const rawWeight = typeof src.weight === 'string' ? Number(src.weight.trim()) : src.weight
+  let weight = finiteNumber(rawWeight) ? clamp(rawWeight, 100, 900) : fallback.weight
+  const snapped = snapWeight(family, weight)
+  if (snapped !== weight && finiteNumber(rawWeight)) fixes.push(`字重 ${weight} 不被该字体支持，已吸附为 ${snapped}`)
+  weight = snapped
+  return { value: { family, weight, size, lineHeight, tracking }, fixes }
+}
+
+// 消毒整套 levels（方案 / 草稿共用）。fallbackLevels 缺省取瑞士网格
+export function sanitizeLevels(raw, fallbackLevels = FONT_COMBOS[0].levels) {
+  const src = raw && typeof raw === 'object' ? raw : {}
+  const levels = {}
+  const fixes = []
+  for (const l of LEVELS) {
+    const result = sanitizeLevel(src[l.key], fallbackLevels[l.key])
+    levels[l.key] = result.value
+    for (const f of result.fixes) fixes.push(`${l.label}：${f}`)
+  }
+  return { levels, fixes }
+}
+
+export function sanitizeStageWidth(v) {
+  const n = typeof v === 'string' ? Number(v.trim()) : v
+  if (!finiteNumber(n)) return DEFAULT_STATE.stageWidth
+  return clamp(Math.round(n / 8) * 8, 320, 1040)
+}
+
+export function isValidComboId(id) {
+  return typeof id === 'string' && FONT_COMBOS.some(c => c.id === id)
+}
+
+// 消毒一个从外部读入的方案对象；非法输入返回 null
+export function sanitizeScheme(raw) {
+  if (!raw || typeof raw !== 'object' || !raw.data || typeof raw.data !== 'object') return null
+  const { levels, fixes } = sanitizeLevels(raw.data.levels)
+  const name = typeof raw.name === 'string' && raw.name.trim()
+    ? raw.name.trim().slice(0, 40)
+    : '未命名方案'
+  const savedAt = typeof raw.savedAt === 'string' && !Number.isNaN(Date.parse(raw.savedAt))
+    ? raw.savedAt
+    : new Date().toISOString()
+  const comboId = isValidComboId(raw.data.comboId) ? raw.data.comboId : FONT_COMBOS[0].id
+  return {
+    id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 60) : 'sc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name,
+    savedAt,
+    imported: true,
+    fixes,
+    data: { comboId, stageWidth: sanitizeStageWidth(raw.data.stageWidth), levels }
+  }
+}
